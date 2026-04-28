@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Escáner QR WebApp</title>
+<title>QR App</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
     body {
         margin: 0;
         font-family: Arial;
-        background: #111;
+        background: black;
         color: white;
         text-align: center;
     }
@@ -20,17 +20,28 @@
         margin: auto;
     }
 
-    iframe {
+    #visor {
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 100%;
-        height: 80vh;
+        height: 100%;
         border: none;
-        margin-top: 10px;
+        display: none;
+        background: black;
+    }
+
+    #overlay {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        display: none;
     }
 
     button {
         padding: 10px;
-        margin: 10px;
-        background: #00c853;
+        background: red;
         border: none;
         color: white;
         cursor: pointer;
@@ -40,50 +51,69 @@
 
 <body>
 
-<h2>📷 Escáner QR (Cámara trasera)</h2>
+<h2>📷 Escanea un QR</h2>
 
 <div id="reader"></div>
 
-<button onclick="abrirContenido()">Abrir</button>
+<!-- Botón para regresar -->
+<div id="overlay">
+    <button onclick="cerrarVisor()">⬅ Volver</button>
+</div>
 
 <iframe id="visor"></iframe>
 
 <script>
-let ultimoResultado = "";
+let abierto = false;
 
-function onScanSuccess(decodedText) {
-    ultimoResultado = decodedText;
-    console.log("QR:", decodedText);
+function onScanSuccess(texto) {
+
+    if (abierto) return; // evitar múltiples aperturas
+    abierto = true;
+
+    const visor = document.getElementById("visor");
+    const overlay = document.getElementById("overlay");
+
+    // detener cámara
+    html5QrCode.stop();
+
+    // mostrar visor
+    visor.style.display = "block";
+    overlay.style.display = "block";
+
+    if (texto.startsWith("http")) {
+        visor.src = texto;
+    } else {
+        visor.srcdoc = `<h1 style="color:white;">${texto}</h1>`;
+    }
+}
+
+function cerrarVisor() {
+    const visor = document.getElementById("visor");
+    const overlay = document.getElementById("overlay");
+
+    visor.style.display = "none";
+    overlay.style.display = "none";
+    visor.src = "";
+
+    abierto = false;
+
+    // volver a activar cámara
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
+    );
 }
 
 const html5QrCode = new Html5Qrcode("reader");
 
-// 🔥 USAR CÁMARA TRASERA
+// 🔥 cámara trasera + auto escaneo
 html5QrCode.start(
-    { facingMode: "environment" }, // 👈 clave aquí
-    {
-        fps: 10,
-        qrbox: 250
-    },
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
     onScanSuccess
-).catch(err => {
-    console.log("Error al iniciar cámara:", err);
-});
+).catch(err => console.log(err));
 
-function abrirContenido() {
-    if (!ultimoResultado) {
-        alert("Escanea primero");
-        return;
-    }
-
-    const visor = document.getElementById("visor");
-
-    if (ultimoResultado.startsWith("http")) {
-        visor.src = ultimoResultado;
-    } else {
-        visor.srcdoc = `<h1 style="color:white;">${ultimoResultado}</h1>`;
-    }
-}
 </script>
 
 </body>
